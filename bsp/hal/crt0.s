@@ -91,11 +91,26 @@ _start:
 
 @ ESTA PARTE SE COMPLETARÁ EN LA PRÁCTICA 6
 
+	msr cpsr_c, #(_UND_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_und_stack_top
+	msr cpsr_c, #(_ABT_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_abt_stack_top
+	msr cpsr_c, #(_SYS_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_sys_stack_top
+	msr cpsr_c, #(_FIQ_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_fiq_stack_top
+	msr cpsr_c, #(_IRQ_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_irq_stack_top
+	msr cpsr_c, #(_SVC_MODE | _IRQ_DISABLE | _FIQ_DISABLE)
+	ldr sp, =_svc_stack_top
+
 @
 @ Inicialización de la plataforma (llamada a bsp_init)
 @
 
 @ ESTA PARTE SE COMPLETARÁ EN LA PRÁCTICA 6
+
+	bl bsp_init
 
 @
 @ Cambiamos a modo User y habilitamos las interrupciones
@@ -103,11 +118,15 @@ _start:
 
 @ ESTA PARTE SE COMPLETARÁ EN LA PRÁCTICA 6
 
+	msr cpsr_c, #_USR_MODE
+
 @
 @ Salto a main
 @
 
 @ ESTA PARTE SE COMPLETARÁ EN LA PRÁCTICA 6
+
+	bl main
 
 @
 @ Colgamos el sistema si main retorna
@@ -115,3 +134,4 @@ _start:
 	b	.			@ Colgamos el sistema si main retorna
 
 	.size   _start, .-_start
+

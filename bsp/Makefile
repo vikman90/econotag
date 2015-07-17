@@ -16,7 +16,7 @@ BSP_ROOT_DIR   = .
 OBJ_DIR        = $(BSP_ROOT_DIR)/obj
 
 # Directorio de la toolchain de GNU
-TOOLS_PATH     = /fenix/depar/atc/se/toolchain
+TOOLS_PATH     = /opt/econotag
 
 #
 # Herramientas y cadena de desarrollo
