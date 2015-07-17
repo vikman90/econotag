@@ -5,6 +5,9 @@
 
 #include "system.h"
 
+static uint32_t const IRQ_DISABLE = 0x80;
+static uint32_t const FIQ_DISABLE = 0x40;
+
 /*****************************************************************************/
 
 /**
@@ -36,8 +39,14 @@ void excep_init ()
  */
 inline uint32_t excep_disable_ints ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
-	return 0;
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+	
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" (state | IRQ_DISABLE | FIQ_DISABLE));
+	
+	return state & (IRQ_DISABLE | FIQ_DISABLE);
 }
 
 /*****************************************************************************/
@@ -52,8 +61,14 @@ inline uint32_t excep_disable_ints ()
  */
 inline uint32_t excep_disable_irq ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
-	return 0;
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" (state | IRQ_DISABLE));
+	
+	return state & IRQ_DISABLE;
 }
 
 /*****************************************************************************/
@@ -68,8 +83,14 @@ inline uint32_t excep_disable_irq ()
  */
 inline uint32_t excep_disable_fiq ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
-	return 0;
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" (state | FIQ_DISABLE));
+	
+	return state & FIQ_DISABLE;
 }
 
 /*****************************************************************************/
@@ -86,7 +107,12 @@ inline uint32_t excep_disable_fiq ()
  */
 inline void excep_restore_ints (uint32_t if_bits)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+	
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" ((state & ~(IRQ_DISABLE | FIQ_DISABLE)) | if_bits));
 }
 
 /*****************************************************************************/
@@ -101,7 +127,12 @@ inline void excep_restore_ints (uint32_t if_bits)
  */
 inline void excep_restore_irq (uint32_t i_bit)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+	
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" ((state & ~IRQ_DISABLE) | i_bit));
 }
 
 /*****************************************************************************/
@@ -116,7 +147,12 @@ inline void excep_restore_irq (uint32_t i_bit)
  */
 inline void excep_restore_fiq (uint32_t f_bit)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+	
+	uint32_t state;
+	
+	asm("mrs %[state], cpsr" : [state] "=r" (state));
+	asm("msr cpsr_c, %[mask]" : : [mask] "r" ((state & ~FIQ_DISABLE) | f_bit));
 }
 
 /*****************************************************************************/
@@ -128,7 +164,9 @@ inline void excep_restore_fiq (uint32_t f_bit)
  */
 inline void excep_set_handler (excep_t excep, excep_handler_t handler)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+
+	_excep_handlers[excep] = handler;
 }
 
 /*****************************************************************************/
@@ -139,8 +177,9 @@ inline void excep_set_handler (excep_t excep, excep_handler_t handler)
  */
 inline excep_handler_t excep_get_handler (excep_t excep)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 5 */
-        return NULL;
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 7 */
+
+	return _excep_handlers[excep];
 }
 
 /*****************************************************************************/

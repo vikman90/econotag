@@ -6,6 +6,7 @@
 /*****************************************************************************/
 
 #include <stdint.h>
+#include "system.h"
 
 /*
  * Constantes relativas a la plataforma
@@ -47,6 +48,16 @@ uint32_t const button_s3_mask1 = 1 << 26;
  * Constantes relativas a la aplicacion
  */
 uint32_t const delay = 0x10000;
+
+/*
+ * Manejador de excepciones para instrucciones no validas
+ */
+
+void excep_undef_handler() __attribute__ ((interrupt ("UNDEF")));
+
+void excep_undef_handler() {
+	*reg_gpio_data_set1 = led_green_mask;
+}
  
 /*****************************************************************************/
 
@@ -55,11 +66,15 @@ uint32_t const delay = 0x10000;
  */
 void gpio_init(void)
 {
+	uint32_t if_bits = excep_disable_ints();
+	
 	/* Configuramos el GPIO44 y GPIO45 para que sean de salida */
 	*reg_gpio_pad_dir1 = led_red_mask | led_green_mask;
 	
 	/* Configuramos el GPIO22 y GPIO23 para que sean de salida */
 	*reg_gpio_pad_dir0 = button_s2_mask0 | button_s3_mask0;
+	
+	excep_restore_ints(if_bits);
 }
 
 /*****************************************************************************/
@@ -124,7 +139,11 @@ void test_buttons()
 int main ()
 {
 	gpio_init();
+	excep_set_handler(excep_undef, excep_undef_handler);
 	the_led = led_red_mask;
+	
+	// Instruccion invalida
+	asm(".word 0x26889912\n");
 
 	while (1)
 	{

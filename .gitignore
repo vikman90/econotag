@@ -2,6 +2,7 @@ tools
 *.o
 *.elf
 *.bin
+*.a
 .metadata
 .cproject
 .project
