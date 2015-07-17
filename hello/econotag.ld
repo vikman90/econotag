@@ -18,7 +18,18 @@ ENTRY(_start)
 MEMORY
 {
         ram0 :  org = 0x00400000,       len = 0x00002000        /* (8 KB) */
+        ram1 :	org = 0x00402000,		len = 0x00006000		/* (24 KB) */
+        ram2 :	org = 0x00408000,		len = 0x00008000		/* (32 KB) */
+        ram3 :	org = 0x00410000,		len = 0x00008000		/* (32 KB) */
 }
+
+gpio_base = 0x80000000;
+gpio_pad_dir0 = gpio_base + 0x00000000;
+gpio_pad_dir1 = gpio_base + 0x00000004;
+gpio_data0 = gpio_base + 0x00000008;
+gpio_data_set0 = gpio_base + 0x00000048;
+gpio_data_set1 = gpio_base + 0x0000004C;
+gpio_data_reset1 = gpio_base + 0x00000054;
 
 SECTIONS
 {
@@ -27,4 +38,11 @@ SECTIONS
         {
                 *(.text);
         } > ram0
+        
+        /* Datos globales */
+        .data : ALIGN(4)
+        {
+        	*(.data);
+        	
+        } > ram1
 }
