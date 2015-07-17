@@ -1,0 +1,7 @@
+tools
+*.o
+*.elf
+*.bin
+.metadata
+.cproject
+.project
