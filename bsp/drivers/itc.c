@@ -12,7 +12,23 @@
  */
 typedef struct
 {
-	/* ESTA ESTRUCTURA SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA ESTRUCTURA SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	int32_t intcntl;
+	int32_t nimask;
+	int32_t intennum;
+	int32_t intdisnum;
+	int32_t intenable;
+	int32_t inttype;
+	int32_t reserved1;
+	int32_t reserved2;
+	int32_t reserved3;
+	int32_t reserved4;
+	int32_t nivector;
+	int32_t fivector;
+	int32_t intsrc;
+	int32_t intfrc;
+	int32_t nipend;
+	int32_t fipend;
 } itc_regs_t;
 
 static volatile itc_regs_t* const itc_regs = ITC_BASE;
@@ -21,6 +37,9 @@ static volatile itc_regs_t* const itc_regs = ITC_BASE;
  * Tabla de manejadores de interrupción.
  */
 static itc_handler_t itc_handlers[itc_src_max];
+
+// Estado de habilitacion de las interrupciones
+static uint32_t itc_old_intenable;
 
 /*****************************************************************************/
 
@@ -32,7 +51,16 @@ static itc_handler_t itc_handlers[itc_src_max];
  */
 inline void itc_init ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	int i;
+	
+	for (i = 0; i < itc_src_max; i++)
+		itc_handlers[i] = NULL;
+	
+	itc_regs->intfrc = 0;
+	itc_regs->intenable = 0;
+	itc_regs->intcntl &= ~(3 << 19);
 }
 
 /*****************************************************************************/
@@ -43,7 +71,10 @@ inline void itc_init ()
  */
 inline void itc_disable_ints ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_old_intenable = itc_regs->intenable;
+	itc_regs->intenable = 0;
 }
 
 /*****************************************************************************/
@@ -54,7 +85,9 @@ inline void itc_disable_ints ()
  */
 inline void itc_restore_ints ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->intenable = itc_old_intenable;
 }
 
 /*****************************************************************************/
@@ -66,7 +99,9 @@ inline void itc_restore_ints ()
  */
 inline void itc_set_handler (itc_src_t src, itc_handler_t handler)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_handlers[src] = handler;
 }
 
 /*****************************************************************************/
@@ -78,7 +113,9 @@ inline void itc_set_handler (itc_src_t src, itc_handler_t handler)
  */
 inline void itc_set_priority (itc_src_t src, itc_priority_t priority)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->inttype = (itc_regs->inttype & 0xFFFF0000) | priority << src;
 }
 
 /*****************************************************************************/
@@ -89,7 +126,9 @@ inline void itc_set_priority (itc_src_t src, itc_priority_t priority)
  */
 inline void itc_enable_interrupt (itc_src_t src)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->intennum = (itc_regs->intennum & 0xFFFF0000) | src;
 }
 
 /*****************************************************************************/
@@ -100,7 +139,9 @@ inline void itc_enable_interrupt (itc_src_t src)
  */
 inline void itc_disable_interrupt (itc_src_t src)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->intdisnum = (itc_regs->intdisnum & 0xFFFF0000) | src;
 }
 
 /*****************************************************************************/
@@ -111,7 +152,9 @@ inline void itc_disable_interrupt (itc_src_t src)
  */
 inline void itc_force_interrupt (itc_src_t src)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->intfrc |= (1 << src);
 }
 
 /*****************************************************************************/
@@ -122,7 +165,9 @@ inline void itc_force_interrupt (itc_src_t src)
  */
 inline void itc_unforce_interrupt (itc_src_t src)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_regs->intfrc &= ~(1 << src);
 }
 
 /*****************************************************************************/
@@ -134,7 +179,9 @@ inline void itc_unforce_interrupt (itc_src_t src)
  */
 void itc_service_normal_interrupt ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_handlers[itc_regs->nivector & 0xFFFF]();
 }
 
 /*****************************************************************************/
@@ -144,7 +191,9 @@ void itc_service_normal_interrupt ()
  */
 void itc_service_fast_interrupt ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_handlers[itc_regs->fivector & 0xFFFF]();
 }
 
 /*****************************************************************************/

@@ -188,12 +188,15 @@ inline excep_handler_t excep_get_handler (excep_t excep)
  * Manejador en C para interrupciones normales no anidadas
  * El atributo interrupt no guarda en la pila el registro spsr, por lo que
  * sólo genera manejadores para interrupciones no anidadas
- * Para poder gestionar interrupciones anidadas y sacar partiro al controlador
+ * Para poder gestionar interrupciones anidadas y sacar partido al controlador
  * de interrupciones es necesario escribir el manejador en ensamblador
  */
+void excep_nonnested_irq_handler () __attribute__ ((interrupt ("IRQ")));
 void excep_nonnested_irq_handler ()
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 6 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	
+	itc_service_normal_interrupt();
 }
 
 /*****************************************************************************/
