@@ -264,10 +264,10 @@ inline gpio_err_t gpio_get_pin (gpio_pin_t pin, uint32_t *pin_data)
 	
 	if (pin < 32) {
 		if (gpio_regs->GPIO_PAD_DIR0 & (1 << pin))
-			while(1);//return gpio_invalid_parameter;
+			return gpio_invalid_parameter;
 	} else
 		if (gpio_regs->GPIO_PAD_DIR1 & (1 << (pin - 32)))
-			while(1);//return gpio_invalid_parameter;
+			return gpio_invalid_parameter;
 		
 	*pin_data = (pin < 32) ? (gpio_regs->GPIO_DATA0 & (1 << pin)) >> pin : (gpio_regs->GPIO_DATA1 & (1 << (pin - 32))) >> (pin - 32);
 
