@@ -21,20 +21,20 @@ typedef struct
 	// El procesador MC1322x es little-endian
 	// El bit menos significativo esta en la direccion base
 	
-	uint32_t UCON;
-	uint32_t USTAT;
+	uint32_t ucon;
+	uint32_t ustat;
 	
 	// Alineamiento a la direccion base
 	
 	union {
-		uint8_t UDATA; // Solo son validos los bits 7:0
-		uint32_t UDATA32;
+		uint8_t udata; // Solo son validos los bits 7:0
+		uint32_t _udata32;
 	};
 	
-	uint32_t URxCON;
-	uint32_t UTxCON;
-	uint32_t UCTS;
-	uint32_t UBR;
+	uint32_t urxcon;
+	uint32_t utxcon;
+	uint32_t ucts;
+	uint32_t ubr;
 	
 } uart_regs_t;
 
@@ -106,15 +106,15 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 	
 	// Deshabilitar dispositivo y enmascarar interrupciones
 
-	uart_regs[uart]->UCON = (uart_regs[uart]->UCON & ~3) | 0x6000;	
+	uart_regs[uart]->ucon = (uart_regs[uart]->ucon & ~3) | 0x6000;	
 	
 	// Fijar frecuencia de operacion
 	
-	uart_regs[uart]->UBR = (((br * 9999) / (CPU_FREQ >> 4)) << 16) | 9999;
+	uart_regs[uart]->ubr = (((br * 9999) / (CPU_FREQ >> 4)) << 16) | 9999;
 	
 	// Habilitar dispositivo
 	
-	uart_regs[uart]->UCON |= 3;
+	uart_regs[uart]->ucon |= 3;
 	
 	// Funcion y direccion de los pines
 	
@@ -143,8 +143,8 @@ void uart_send_byte (uart_id_t uart, uint8_t c)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
-	while (!(uart_regs[uart]->UTxCON & 63));
-	uart_regs[uart]->UDATA = c;
+	while (!(uart_regs[uart]->utxcon & 63));
+	uart_regs[uart]->udata = c;
 }
 
 /*****************************************************************************/
@@ -159,8 +159,8 @@ uint8_t uart_receive_byte (uart_id_t uart)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
-	while (!(uart_regs[uart]->URxCON & 63));
-	return uart_regs[uart]->UDATA;
+	while (!(uart_regs[uart]->urxcon & 63));
+	return uart_regs[uart]->udata;
 }
 
 /*****************************************************************************/
