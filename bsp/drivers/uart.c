@@ -16,7 +16,26 @@
 
 typedef struct
 {
-	/* ESTA ESTRUCTURA SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	/* ESTA ESTRUCTURA SE DEFINIRÁ EN LA PRÁCTICA 10 */
+	
+	// El procesador MC1322x es little-endian
+	// El bit menos significativo esta en la direccion base
+	
+	uint32_t UCON;
+	uint32_t USTAT;
+	
+	// Alineamiento a la direccion base
+	
+	union {
+		uint8_t UDATA; // Solo son validos los bits 7:0
+		uint32_t UDATA32;
+	};
+	
+	uint32_t URxCON;
+	uint32_t UTxCON;
+	uint32_t UCTS;
+	uint32_t UBR;
+	
 } uart_regs_t;
 
 /*****************************************************************************/
@@ -83,7 +102,31 @@ static volatile uart_callbacks_t uart_callbacks[uart_max];
  */
 int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LAS PRÁCTICAS 8, 9 y 10 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LAS PRÁCTICAS 10, 11 y 12 */
+	
+	// Deshabilitar dispositivo y enmascarar interrupciones
+
+	uart_regs[uart]->UCON = (uart_regs[uart]->UCON & ~3) | 0x6000;	
+	
+	// Fijar frecuencia de operacion
+	
+	uart_regs[uart]->UBR = (((br * 9999) / (CPU_FREQ >> 4)) << 16) | 9999;
+	
+	// Habilitar dispositivo
+	
+	uart_regs[uart]->UCON |= 3;
+	
+	// Funcion y direccion de los pines
+	
+	gpio_set_pin_dir_input(uart_pins[uart].tx);
+	gpio_set_pin_dir_input(uart_pins[uart].rx);
+	gpio_set_pin_dir_input(uart_pins[uart].cts);
+	gpio_set_pin_dir_input(uart_pins[uart].rts);
+	
+	gpio_set_pin_func(uart_pins[uart].tx, gpio_func_alternate_1);
+	gpio_set_pin_func(uart_pins[uart].rx, gpio_func_alternate_1);
+	gpio_set_pin_func(uart_pins[uart].cts, gpio_func_alternate_1);
+	gpio_set_pin_func(uart_pins[uart].rts, gpio_func_alternate_1);
 
 	return 0;
 }
@@ -98,7 +141,10 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
  */
 void uart_send_byte (uart_id_t uart, uint8_t c)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
+	
+	while (!(uart_regs[uart]->UTxCON & 63));
+	uart_regs[uart]->UDATA = c;
 }
 
 /*****************************************************************************/
@@ -111,8 +157,10 @@ void uart_send_byte (uart_id_t uart, uint8_t c)
  */
 uint8_t uart_receive_byte (uart_id_t uart)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 8 */
-        return 0;
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
+	
+	while (!(uart_regs[uart]->URxCON & 63));
+	return uart_regs[uart]->UDATA;
 }
 
 /*****************************************************************************/
@@ -129,7 +177,7 @@ uint8_t uart_receive_byte (uart_id_t uart)
  */
 ssize_t uart_send (uint32_t uart, char *buf, size_t count)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 9 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
         return count;
 }
 
@@ -147,7 +195,7 @@ ssize_t uart_send (uint32_t uart, char *buf, size_t count)
  */
 ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 9 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
         return 0;
 }
 
@@ -162,7 +210,7 @@ ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
  */
 int32_t uart_set_receive_callback (uart_id_t uart, uart_callback_t func)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 9 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
         return 0;
 }
 
@@ -177,7 +225,7 @@ int32_t uart_set_receive_callback (uart_id_t uart, uart_callback_t func)
  */
 int32_t uart_set_send_callback (uart_id_t uart, uart_callback_t func)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 9 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
         return 0;
 }
 
@@ -192,7 +240,7 @@ int32_t uart_set_send_callback (uart_id_t uart, uart_callback_t func)
  */
 static inline void uart_isr (uart_id_t uart)
 {
-	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 9 */
+	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
 }
 
 /*****************************************************************************/
