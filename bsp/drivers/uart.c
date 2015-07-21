@@ -21,22 +21,100 @@ typedef struct
 	// El procesador MC1322x es little-endian
 	// El bit menos significativo esta en la direccion base
 	
-	uint32_t ucon;
-	uint32_t ustat;
+	// UCON
+	
+	struct
+	{
+		uint32_t txe:1;
+		uint32_t rxe:1;
+		uint32_t pen:1;
+		uint32_t ep:1;
+		uint32_t st2:1;
+		uint32_t sb:1;
+		uint32_t contx:1;
+		uint32_t tx_oen_b:1;
+		uint32_t :1;
+		uint32_t res:1;
+		uint32_t xtim:1;
+		uint32_t fcp:1;
+		uint32_t fce:1;
+		uint32_t mtxr:1;
+		uint32_t mrxr:1;
+		uint32_t tst:1;
+	};
+	
+	// USTAT
+	
+	struct
+	{
+		uint32_t se:1;
+		uint32_t pe:1;
+		uint32_t fe:1;
+		uint32_t toe:1;
+		uint32_t roe:1;
+		uint32_t rue:1;
+		uint32_t rxrdy:1;
+		uint32_t txrdy:1;
+	};
 	
 	// Alineamiento a la direccion base
 	
-	union {
+	union 
+	{
 		uint8_t udata; // Solo son validos los bits 7:0
 		uint32_t _udata32;
 	};
 	
-	uint32_t urxcon;
-	uint32_t utxcon;
-	uint32_t ucts;
-	uint32_t ubr;
+	// URXCON
+	
+	union
+	{
+		struct
+		{
+			uint32_t rx_fifo_addr_diff:6;
+		};
+		
+		struct
+		{
+			uint32_t rxlevel:5;
+		};
+	};
+	
+	
+	// UTXCON
+	
+	union
+	{
+		struct
+		{
+			uint32_t tx_fifo_addr_diff:6;
+		};
+		
+		struct
+		{
+			uint32_t txlevel:5;
+		};
+	};
+	
+	// UCTS
+	
+	struct
+	{
+		uint32_t cts_level:5;
+	};
+	
+	struct 
+	{
+		uint32_t ubrmod:16;
+		uint32_t ubrinc:16;
+	};
 	
 } uart_regs_t;
+
+#define ENABLE 1
+#define DISABLE 0
+#define IRQ_ENABLED 0
+#define IRQ_MASKED 1
 
 /*****************************************************************************/
 
@@ -65,7 +143,7 @@ static const itc_handler_t uart_irq_handlers[uart_max] = {uart_1_isr, uart_2_isr
 
 /*****************************************************************************/
 
-/**
+/** 
  * Tamaño de los búferes circulares
  */
 #define __UART_BUFFER_SIZE__	256
@@ -75,7 +153,6 @@ static volatile uint8_t uart_tx_buffers[uart_max][__UART_BUFFER_SIZE__];
 
 static volatile circular_buffer_t uart_circular_rx_buffers[uart_max];
 static volatile circular_buffer_t uart_circular_tx_buffers[uart_max];
-
 
 /*****************************************************************************/
 
@@ -106,15 +183,21 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 	
 	// Deshabilitar dispositivo y enmascarar interrupciones
 
-	uart_regs[uart]->ucon = (uart_regs[uart]->ucon & ~3) | 0x6000;	
+	//uart_regs[uart]->ucon = (uart_regs[uart]->ucon & ~3) | 0x6000;
+	uart_regs[uart]->txe = DISABLE;
+	uart_regs[uart]->rxe = DISABLE;
+	uart_regs[uart]->mtxr = IRQ_MASKED;
+	uart_regs[uart]->mrxr = IRQ_MASKED;
 	
 	// Fijar frecuencia de operacion
 	
-	uart_regs[uart]->ubr = (((br * 9999) / (CPU_FREQ >> 4)) << 16) | 9999;
+	uart_regs[uart]->ubrmod = 9999;
+	uart_regs[uart]->ubrinc = (br * 9999) / (CPU_FREQ >> 4);
 	
 	// Habilitar dispositivo
 	
-	uart_regs[uart]->ucon |= 3;
+	uart_regs[uart]->txe = ENABLE;
+	uart_regs[uart]->rxe = ENABLE;
 	
 	// Funcion y direccion de los pines
 	
@@ -143,7 +226,7 @@ void uart_send_byte (uart_id_t uart, uint8_t c)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
-	while (!(uart_regs[uart]->utxcon & 63));
+	while (!uart_regs[uart]->tx_fifo_addr_diff);
 	uart_regs[uart]->udata = c;
 }
 
@@ -159,7 +242,7 @@ uint8_t uart_receive_byte (uart_id_t uart)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
-	while (!(uart_regs[uart]->urxcon & 63));
+	while (!uart_regs[uart]->rx_fifo_addr_diff);
 	return uart_regs[uart]->udata;
 }
 
