@@ -171,6 +171,11 @@ static volatile uart_callbacks_t uart_callbacks[uart_max];
 
 /*****************************************************************************/
 
+int uart_open(uint32_t id, int flags, mode_t mode)
+{
+	return 0;
+}
+
 /**
  * Inicializa una uart
  * @param uart	Identificador de la uart
@@ -247,7 +252,10 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 	}
 	
 	uart_regs[uart]->mrxr = IRQ_ENABLED;
-
+	
+	// Inicializacion L2
+	
+	bsp_register_dev(name, uart, uart_open, NULL, uart_receive, uart_send, NULL, NULL, NULL);
 	return 0;
 }
 
@@ -334,14 +342,13 @@ ssize_t uart_send (uint32_t uart, char *buf, size_t count)
 	}
 	
 	size_t i;
-	
+
 	uart_regs[uart]->mtxr = IRQ_MASKED;
 	
 	for (i = 0; i < count && !circular_buffer_is_full(&uart_circular_tx_buffers[uart]); i++)
 		circular_buffer_write(&uart_circular_tx_buffers[uart], buf[i]);
 		
-	uart_regs[uart]->mtxr = IRQ_ENABLED;
-	
+	uart_regs[uart]->mtxr = IRQ_ENABLED;	
     return i;
         
 }
@@ -361,7 +368,7 @@ ssize_t uart_send (uint32_t uart, char *buf, size_t count)
 ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
-
+	
 	// count es size_t (unsigned) => no puede ser negativo
 	
 	if (uart >= uart_max) {
@@ -380,9 +387,8 @@ ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
 	
 	for (i = 0; i < count && !circular_buffer_is_empty(&uart_circular_rx_buffers[uart]); i++)
 		buf[i] = circular_buffer_read(&uart_circular_rx_buffers[uart]);
-		
-	uart_regs[uart]->mrxr = IRQ_ENABLED;
 	
+	uart_regs[uart]->mrxr = IRQ_ENABLED;
     return i;
 }
 
@@ -443,9 +449,10 @@ static inline void uart_isr (uart_id_t uart)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
 	
-	if (uart_regs[uart]->rxrdy) {
-		while (uart_regs[uart]->rx_fifo_addr_diff && !circular_buffer_is_full(&uart_circular_rx_buffers[uart]))
+	if (uart_regs[uart]->rxrdy) {		
+		while (uart_regs[uart]->rx_fifo_addr_diff && !circular_buffer_is_full(&uart_circular_rx_buffers[uart])) {
 			circular_buffer_write(&uart_circular_rx_buffers[uart], uart_regs[uart]->udata);
+		}
 		
 		if (uart_callbacks[uart].rx_callback)
 			uart_callbacks[uart].rx_callback();

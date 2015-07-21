@@ -206,7 +206,7 @@ void redirect_fd(uint32_t fd, const char* name, int flags, mode_t mode)
 	temp = open (name, flags, mode);
 
 	if (temp >= 0)
-	{
+	{	
 		bsp_fd_list[fd].dev   = bsp_fd_list[temp].dev;
 		bsp_fd_list[fd].flags = bsp_fd_list[temp].flags;
 
