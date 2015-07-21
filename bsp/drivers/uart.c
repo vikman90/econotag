@@ -71,7 +71,7 @@ typedef struct
 	{
 		struct
 		{
-			uint32_t rx_fifo_addr_diff:6;
+			uint32_t rx_fifo_addr_diff:6; // Bytes disponibles (validos) para leer
 		};
 		
 		struct
@@ -87,7 +87,7 @@ typedef struct
 	{
 		struct
 		{
-			uint32_t tx_fifo_addr_diff:6;
+			uint32_t tx_fifo_addr_diff:6; // Bytes disponibles (vacios) para escribir
 		};
 		
 		struct
@@ -115,6 +115,8 @@ typedef struct
 #define DISABLE 0
 #define IRQ_ENABLED 0
 #define IRQ_MASKED 1
+#define TX_LEVEL 31
+#define RX_LEVEL 1
 
 /*****************************************************************************/
 
@@ -181,9 +183,20 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LAS PRÁCTICAS 10, 11 y 12 */
 	
+	// Comprobacion de errores
+	
+	if (uart >= uart_max) {
+		errno = ENODEV;
+		return -1;
+	}
+	
+	if (!name) {
+		errno = EFAULT;
+		return -1;
+	}
+	
 	// Deshabilitar dispositivo y enmascarar interrupciones
 
-	//uart_regs[uart]->ucon = (uart_regs[uart]->ucon & ~3) | 0x6000;
 	uart_regs[uart]->txe = DISABLE;
 	uart_regs[uart]->rxe = DISABLE;
 	uart_regs[uart]->mtxr = IRQ_MASKED;
@@ -210,6 +223,30 @@ int32_t uart_init (uart_id_t uart, uint32_t br, const char *name)
 	gpio_set_pin_func(uart_pins[uart].rx, gpio_func_alternate_1);
 	gpio_set_pin_func(uart_pins[uart].cts, gpio_func_alternate_1);
 	gpio_set_pin_func(uart_pins[uart].rts, gpio_func_alternate_1);
+	
+	// Inicializacion L1
+	
+	circular_buffer_init(&uart_circular_rx_buffers[uart], (uint8_t *)uart_rx_buffers[uart], __UART_BUFFER_SIZE__);
+	circular_buffer_init(&uart_circular_tx_buffers[uart], (uint8_t *)uart_tx_buffers[uart], __UART_BUFFER_SIZE__);
+	
+	uart_regs[uart]->txlevel = TX_LEVEL;
+	uart_regs[uart]->rxlevel = RX_LEVEL;
+	
+	switch (uart) {
+	case uart_1:
+		itc_set_priority(itc_src_uart1, itc_priority_normal);
+		itc_set_handler(itc_src_uart1, uart_1_isr);
+		itc_enable_interrupt(itc_src_uart1);
+		break;
+	case uart_2:
+		itc_set_priority(itc_src_uart2, itc_priority_normal);
+		itc_set_handler(itc_src_uart2, uart_2_isr);
+		itc_enable_interrupt(itc_src_uart2);
+		break;
+	default: ;
+	}
+	
+	uart_regs[uart]->mrxr = IRQ_ENABLED;
 
 	return 0;
 }
@@ -226,8 +263,18 @@ void uart_send_byte (uart_id_t uart, uint8_t c)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
+	uint32_t old_mtxr = uart_regs[uart]->mtxr;
+	uart_regs[uart]->mtxr = IRQ_MASKED;
+	
+	while (!circular_buffer_is_empty(&uart_circular_tx_buffers[uart])) {
+		while (!uart_regs[uart]->tx_fifo_addr_diff);
+		uart_regs[uart]->udata = circular_buffer_read(&uart_circular_tx_buffers[uart]);
+	}
+	
 	while (!uart_regs[uart]->tx_fifo_addr_diff);
 	uart_regs[uart]->udata = c;
+	
+	uart_regs[uart]->mtxr = old_mtxr;
 }
 
 /*****************************************************************************/
@@ -242,8 +289,20 @@ uint8_t uart_receive_byte (uart_id_t uart)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 10 */
 	
-	while (!uart_regs[uart]->rx_fifo_addr_diff);
-	return uart_regs[uart]->udata;
+	uint8_t byte;
+	uint32_t old_mrxr = uart_regs[uart]->mrxr;
+	
+	uart_regs[uart]->mrxr = IRQ_MASKED;
+	
+	if (!circular_buffer_is_empty(&uart_circular_rx_buffers[uart]))
+		byte = circular_buffer_read(&uart_circular_rx_buffers[uart]);
+	else {
+		while (!uart_regs[uart]->rx_fifo_addr_diff);
+		byte = uart_regs[uart]->udata;
+	}
+	
+	uart_regs[uart]->mrxr = old_mrxr;
+	return byte;
 }
 
 /*****************************************************************************/
@@ -261,7 +320,30 @@ uint8_t uart_receive_byte (uart_id_t uart)
 ssize_t uart_send (uint32_t uart, char *buf, size_t count)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
-        return count;
+	
+	// count es size_t (unsigned) => no puede ser negativo
+	
+	if (uart >= uart_max) {
+		errno = ENODEV;
+		return -1;
+	}
+	
+	if (!buf) {
+		errno = EFAULT;
+		return -1;
+	}
+	
+	size_t i;
+	
+	uart_regs[uart]->mtxr = IRQ_MASKED;
+	
+	for (i = 0; i < count && !circular_buffer_is_full(&uart_circular_tx_buffers[uart]); i++)
+		circular_buffer_write(&uart_circular_tx_buffers[uart], buf[i]);
+		
+	uart_regs[uart]->mtxr = IRQ_ENABLED;
+	
+    return i;
+        
 }
 
 /*****************************************************************************/
@@ -279,7 +361,29 @@ ssize_t uart_send (uint32_t uart, char *buf, size_t count)
 ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
-        return 0;
+
+	// count es size_t (unsigned) => no puede ser negativo
+	
+	if (uart >= uart_max) {
+		errno = ENODEV;
+		return -1;
+	}
+	
+	if (!buf) {
+		errno = EFAULT;
+		return -1;
+	}
+	
+	size_t i;
+	
+	uart_regs[uart]->mrxr = IRQ_MASKED;
+	
+	for (i = 0; i < count && !circular_buffer_is_empty(&uart_circular_rx_buffers[uart]); i++)
+		buf[i] = circular_buffer_read(&uart_circular_rx_buffers[uart]);
+		
+	uart_regs[uart]->mrxr = IRQ_ENABLED;
+	
+    return i;
 }
 
 /*****************************************************************************/
@@ -294,7 +398,14 @@ ssize_t uart_receive (uint32_t uart, char *buf, size_t count)
 int32_t uart_set_receive_callback (uart_id_t uart, uart_callback_t func)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
-        return 0;
+
+	if (uart >= uart_max) {
+		errno = ENODEV;
+		return -1;
+	}
+	
+	uart_callbacks[uart].rx_callback = func;
+	return 0;
 }
 
 /*****************************************************************************/
@@ -309,7 +420,14 @@ int32_t uart_set_receive_callback (uart_id_t uart, uart_callback_t func)
 int32_t uart_set_send_callback (uart_id_t uart, uart_callback_t func)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
-        return 0;
+
+	if (uart >= uart_max) {
+		errno = ENODEV;
+		return -1;
+	}
+	
+	uart_callbacks[uart].tx_callback = func;
+	return 0;
 }
 
 /*****************************************************************************/
@@ -324,6 +442,28 @@ int32_t uart_set_send_callback (uart_id_t uart, uart_callback_t func)
 static inline void uart_isr (uart_id_t uart)
 {
 	/* ESTA FUNCIÓN SE DEFINIRÁ EN LA PRÁCTICA 11 */
+	
+	if (uart_regs[uart]->rxrdy) {
+		while (uart_regs[uart]->rx_fifo_addr_diff && !circular_buffer_is_full(&uart_circular_rx_buffers[uart]))
+			circular_buffer_write(&uart_circular_rx_buffers[uart], uart_regs[uart]->udata);
+		
+		if (uart_callbacks[uart].rx_callback)
+			uart_callbacks[uart].rx_callback();
+		
+		if (circular_buffer_is_full(&uart_circular_rx_buffers[uart]))
+			uart_regs[uart]->mrxr = IRQ_MASKED;
+	}
+	
+	if (uart_regs[uart]->txrdy) {
+		while (uart_regs[uart]->tx_fifo_addr_diff && !circular_buffer_is_empty(&uart_circular_tx_buffers[uart]))
+			uart_regs[uart]->udata = circular_buffer_read(&uart_circular_tx_buffers[uart]);
+		
+		if (uart_callbacks[uart].tx_callback)
+			uart_callbacks[uart].tx_callback();
+		
+		if (circular_buffer_is_empty(&uart_circular_tx_buffers[uart]))
+			uart_regs[uart]->mtxr = IRQ_MASKED;
+	}
 }
 
 /*****************************************************************************/
