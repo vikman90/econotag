@@ -1,10 +1,3 @@
-/*****************************************************************************/
-/*                                                                           */
-/* Sistemas Empotrados                                                       */
-/* El "hola mundo" en la Redwire EconoTAG en C                               */
-/*                                                                           */
-/*****************************************************************************/
-
 #include <stdio.h>
 #include <stdint.h>
 #include "system.h"
@@ -28,32 +21,30 @@ void pause(uint32_t delay)
 	for (i = 0; i < delay ; i++);
 }
 
+void receive_callback()
+{	
+	char data = getchar();
+	
+	if (data == 'r')
+		blink_red_led = !blink_red_led;
+	
+	if (data == 'g')
+		blink_green_led = !blink_green_led;
+
+}
+
 // Programa principal
 
 int main()
 {	
 	gpio_set_pin_dir_output(LED_RED);
 	gpio_set_pin_dir_output(LED_GREEN);
-	
+	uart_set_receive_callback(uart_1, receive_callback);
+
 	while (1)
 	{
-		//gpio_set_pin(LED_RED);
-		//gpio_set_pin(LED_GREEN);
-		
-		// El problema esta en que se llama a uart_receive una sola vez en toda la ejecucion, aparentemente porque recibe EOF
-		
-		char byte = getchar();
-		iprintf("Leido: %c\n\r", byte);
-		
-		if (ferror(stdin))
-			gpio_set_pin(LED_RED); // no se enciende
-			
-		freopen(UART1_NAME, O_RDONLY, stdin);
-		
-		if (byte == 'r')
-			blink_red_led = !blink_red_led;
-		else if (byte == 'g')
-			blink_green_led = !blink_green_led;
+		gpio_set_pin(LED_RED);
+		gpio_set_pin(LED_GREEN);
 		
 		pause(DELAY);
 		
